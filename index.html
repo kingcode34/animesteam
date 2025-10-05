@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AnimeSteam — Discover Anime</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+    * {margin:0;padding:0;box-sizing:border-box;}
+    body {
+      font-family:'Poppins',sans-serif;
+      background-color:#0f0f10;
+      color:#fff;
+      min-height:100vh;
+      padding:2rem;
+    }
+    header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:2rem;
+    }
+    header h1 {
+      font-size:2rem;
+      color:#00b0ff;
+      letter-spacing:1px;
+    }
+    #search-bar {
+      display:flex;
+      gap:.5rem;
+    }
+    #search-input {
+      padding:.7rem 1rem;
+      border:none;
+      border-radius:8px;
+      background:#1c1c1e;
+      color:#fff;
+      width:300px;
+      outline:none;
+    }
+    #search-btn {
+      padding:.7rem 1.2rem;
+      background:#00b0ff;
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    #anime-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+      gap:1.5rem;
+    }
+    .anime-card {
+      background:#1a1a1d;
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(0,0,0,0.4);
+      transition:transform .3s,box-shadow .3s;
+      cursor:pointer;
+    }
+    .anime-card:hover {
+      transform:scale(1.05);
+      box-shadow:0 0 20px #00b0ff44;
+    }
+    .anime-card img {
+      width:100%;
+      height:300px;
+      object-fit:cover;
+    }
+    .anime-info {
+      padding:1rem;
+    }
+    .anime-info h3 {
+      font-size:1rem;
+      margin-bottom:.4rem;
+      color:#00b0ff;
+    }
+    .anime-info p {
+      font-size:.9rem;
+      color:#ccc;
+      line-height:1.4;
+      height:3rem;
+      overflow:hidden;
+    }
+    #modal {
+      display:none;
+      position:fixed;
+      top:0;left:0;
+      width:100%;height:100%;
+      background:rgba(0,0,0,0.8);
+      justify-content:center;
+      align-items:center;
+      z-index:999;
+    }
+    #modal-content {
+      background:#1b1b1d;
+      border-radius:12px;
+      padding:2rem;
+      width:90%;
+      max-width:800px;
+      display:flex;
+      gap:2rem;
+      color:#fff;
+    }
+    #modal-content img {
+      width:250px;
+      height:350px;
+      object-fit:cover;
+      border-radius:10px;
+    }
+    #modal-details {
+      flex:1;
+    }
+    #modal h2 {color:#00b0ff;margin-bottom:.5rem;}
+    #close-btn {
+      background:#ff0040;
+      border:none;
+      color:#fff;
+      padding:.5rem 1rem;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+      margin-top:1rem;
+    }
+    footer {
+      margin-top:3rem;
+      text-align:center;
+      color:#666;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AnimeSteam</h1>
+    <div id="search-bar">
+      <input id="search-input" type="text" placeholder="Search anime e.g. Naruto" />
+      <button id="search-btn">Search</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="anime-grid"></div>
+  </main>
+
+  <div id="modal">
+    <div id="modal-content">
+      <img id="modal-img" src="" alt="">
+      <div id="modal-details">
+        <h2 id="modal-title"></h2>
+        <p id="modal-synopsis"></p>
+        <p id="modal-score"></p>
+        <a id="modal-link" href="#" target="_blank" style="color:#00b0ff;font-weight:bold;">View on MyAnimeList</a><br>
+        <button id="close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Made with 💙 by AnimeSteam | Powered by Jikan API</footer>
+
+  <script>
+    const grid = document.getElementById('anime-grid');
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const modal = document.getElementById('modal');
+    const modalImg = document.getElementById('modal-img');
+    const modalTitle = document.getElementById('modal-title');
+    const modalSynopsis = document.getElementById('modal-synopsis');
+    const modalScore = document.getElementById('modal-score');
+    const modalLink = document.getElementById('modal-link');
+    const closeBtn = document.getElementById('close-btn');
+
+    async function searchAnime(query) {
+      grid.innerHTML = '<p style=\"grid-column:1/-1;text-align:center;\">Loading...</p>';
+      const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&limit=20`);
+      const data = await res.json();
+      if(!data.data || data.data.length === 0) {
+        grid.innerHTML = '<p style=\"grid-column:1/-1;text-align:center;\">No results found.</p>';
+        return;
+      }
+      grid.innerHTML = '';
+      data.data.forEach(anime => {
+        const card = document.createElement('div');
+        card.className = 'anime-card';
+        card.innerHTML = `
+          <img src=\"${anime.images.jpg.large_image_url}\" alt=\"${anime.title}\">
+          <div class=\"anime-info\">
+            <h3>${anime.title}</h3>
+            <p>${anime.synopsis ? anime.synopsis.slice(0, 100) + '...' : 'No synopsis available.'}</p>
+          </div>`;
+        card.addEventListener('click', () => showDetails(anime));
+        grid.appendChild(card);
+      });
+    }
+
+    function showDetails(anime) {
+      modal.style.display = 'flex';
+      modalImg.src = anime.images.jpg.large_image_url;
+      modalTitle.textContent = anime.title;
+      modalSynopsis.textContent = anime.synopsis || 'No synopsis available.';
+      modalScore.textContent = 'Score: ' + (anime.score || 'N/A');
+      modalLink.href = anime.url;
+    }
+
+    closeBtn.onclick = () => { modal.style.display = 'none'; };
+    window.onclick = e => { if(e.target === modal) modal.style.display = 'none'; };
+    searchBtn.onclick = () => searchAnime(searchInput.value);
+    searchInput.addEventListener('keypress', e => { if(e.key === 'Enter') searchAnime(searchInput.value); });
+
+    // Load default anime
+    searchAnime('Naruto');
+  </script>
+</body>
+</html>
